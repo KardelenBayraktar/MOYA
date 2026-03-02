@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Gerekli Widget Importları (Dosya yolları projenize göre kontrol edin)
+// Gerekli Widget Importları
 import 'widgets/profile_header.dart';
 import 'widgets/statistics_section.dart';
 import 'widgets/mood_history_section.dart';
@@ -64,7 +64,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
-                    // MainWrapper'daki hafıza indexine (Müzik vb.) geri döner
                     onPressed: widget.onBack, 
                   ),
                   const Text(
@@ -74,7 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   IconButton(
                     icon: const Icon(Icons.settings_outlined, color: Colors.black87),
                     onPressed: () {
-                      // Ayarlar sayfasını açar
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -99,11 +97,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 32),
                     
+                    // İlk "42 Görev" kartı muhtemelen bu widget'ın içinde:
                     const StatisticsSection(),
                     const SizedBox(height: 24),
 
-                    _buildTaskProgressCard(theme),
-                    const SizedBox(height: 32),
+                    // --- DÜZELTME: Buradaki _buildTaskProgressCard çağrısı ve SizedBox silindi ---
                     
                     const MoodHistorySection(),
                     const SizedBox(height: 32),
@@ -114,7 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       birthday: userData['bday'],
                     ), 
                     
-                    // Alt navigasyon barın (CustomBottomNavBar) içeriği kapatmaması için boşluk
                     const SizedBox(height: 100), 
                   ],
                 ),
@@ -126,42 +123,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTaskProgressCard(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('TAMAMLANAN', style: TextStyle(fontSize: 12, color: Colors.black54, letterSpacing: 1.1)),
-              SizedBox(height: 4),
-              Text('42 Görev', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          SizedBox(
-            width: 55,
-            height: 55,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: 0.75,
-                  strokeWidth: 6,
-                  backgroundColor: Colors.white,
-                  color: theme.primaryColor,
-                ),
-                const Text('75%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // --- NOT: _buildTaskProgressCard metodu, kodun temiz kalması için buradan kaldırıldı ---
 }

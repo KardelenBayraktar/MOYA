@@ -1,20 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:moya/presentation/screens/recording/widgets/saved_placeholder.dart';
-// Yeni oluşturduğun widget'ı buraya import etmeyi unutma
-
 
 class RecordedScreen extends StatelessWidget {
-  const RecordedScreen({super.key});
+  // Sidebar'ı açmak için gereken fonksiyonu ekledik
+  final VoidCallback? onMenuTap; 
+
+  const RecordedScreen({super.key, this.onMenuTap});
 
   @override
   Widget build(BuildContext context) {
-    // Mevcut temanın renklerine erişiyoruz
     final theme = Theme.of(context);
 
     return DefaultTabController(
-      length: 2, // Bloglar ve Egzersizler için 2 sekme
+      length: 2, 
       child: Scaffold(
         appBar: AppBar(
+          // Sol tarafa menü butonunu ekliyoruz
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: onMenuTap,
+          ),
           centerTitle: true,
           title: const Text(
             "Kaydedilenler",
@@ -33,7 +38,6 @@ class RecordedScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
-            // Merkezi widget'ımızı kullanıyoruz
             EmptyStateView(
               message: "Kaydedilmiş Blog Yazısı Bulunmuyor",
               icon: Icons.article_outlined,
