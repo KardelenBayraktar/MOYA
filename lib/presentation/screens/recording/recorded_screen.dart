@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:moya/presentation/screens/recording/widgets/saved_placeholder.dart';
+// Yeni oluşturduğun widget'ı buraya import etmeyi unutma
+
 
 class RecordedScreen extends StatelessWidget {
   // Sidebar'ı açmak için gereken fonksiyonu ekledik
@@ -12,7 +14,7 @@ class RecordedScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return DefaultTabController(
-      length: 2, 
+      length: 2, // Bloglar ve Egzersizler için 2 sekme
       child: Scaffold(
         appBar: AppBar(
           // Sol tarafa menü butonunu ekliyoruz
@@ -26,9 +28,9 @@ class RecordedScreen extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           bottom: TabBar(
-            labelColor: theme.primaryColor,
+            labelColor: theme.colorScheme.primary,
             unselectedLabelColor: Colors.grey,
-            indicatorColor: theme.primaryColor,
+            indicatorColor: theme.colorScheme.primary,
             indicatorWeight: 3,
             tabs: const [
               Tab(text: "Bloglar"),
@@ -36,8 +38,9 @@ class RecordedScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
+            // Merkezi widget'ımızı kullanıyoruz
             EmptyStateView(
               message: "Kaydedilmiş Blog Yazısı Bulunmuyor",
               icon: Icons.article_outlined,
