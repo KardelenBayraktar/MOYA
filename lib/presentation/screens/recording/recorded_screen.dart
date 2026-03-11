@@ -5,10 +5,10 @@ import 'package:moya/presentation/screens/recording/widgets/saved_placeholder.da
 import '../../../../data/models/blog_model.dart';
 
 class RecordedScreen extends StatelessWidget {
-  // Sidebar'ı açmak için gereken fonksiyon
-  final VoidCallback? onMenuTap; 
+  // Nisa branch'inden gelen zorunlu (required) menu fonksiyonu
+  final VoidCallback onMenuTap; 
 
-  const RecordedScreen({super.key, this.onMenuTap});
+  const RecordedScreen({super.key, required this.onMenuTap});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,7 @@ class RecordedScreen extends StatelessWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          // Sol tarafa menü butonunu ekliyoruz
+          // Menü butonu eklendi (Main'deki AppBar'da eksikse diye ekliyoruz)
           leading: IconButton(
             icon: const Icon(Icons.menu),
             onPressed: onMenuTap,
@@ -51,7 +51,6 @@ class RecordedScreen extends StatelessWidget {
 
                 final savedBlogs = snapshot.data ?? [];
 
-                // Eğer liste boşsa EmptyStateView gösteriyoruz
                 if (savedBlogs.isEmpty) {
                   return const EmptyStateView(
                     message: "Kaydedilmiş Blog Yazısı Bulunmuyor",
@@ -59,7 +58,6 @@ class RecordedScreen extends StatelessWidget {
                   );
                 }
 
-                // Veri varsa listeliyoruz
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   itemCount: savedBlogs.length,
