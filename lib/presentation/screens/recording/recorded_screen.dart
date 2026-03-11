@@ -6,7 +6,7 @@ import '../../../../data/models/blog_model.dart';
 
 
 class RecordedScreen extends StatelessWidget {
-  const RecordedScreen({super.key});
+  const RecordedScreen({super.key, required void Function() onMenuTap});
 
   @override
   Widget build(BuildContext context) {
