@@ -48,7 +48,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 0,
-        // --- Değişiklik: Menü Butonu MainWrapper'ı tetikleyecek şekilde ayarlandı ---
         leading: IconButton(
           icon: Icon(Icons.menu, color: theme.colorScheme.onSurface),
           onPressed: widget.onMenuTap,
@@ -58,13 +57,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: SafeArea(
         bottom: false,
         child: StreamBuilder<List<CalendarEventModel>>(
-          // ANLIK VERİ AKIŞI: Veritabanı değiştiği an snapshot yenilenir
           stream: CalendarService.getEventsForMonth(_focusedDay),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Center(
-                child: Text('Veriler yüklenirken bir hata oluştu: ${snapshot.error}',
-                    style: TextStyle(color: theme.colorScheme.onSurface)),
+                child: Text(
+                  'Veriler yüklenirken bir hata oluştu: ${snapshot.error}',
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                ),
               );
             }
 
@@ -74,8 +74,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
             final events = snapshot.data ?? [];
             final weeklyMoods = _calculateWeeklyMoods(events, _selectedDay);
-            // YENİ: Baskın duyguyu hesapla
-            final dominantMoodData = _calculateDominantMood(events, _selectedDay); 
+            final dominantMoodData = _calculateDominantMood(events, _selectedDay);
+            final averageEnergy = _calculateAverageEnergy(events, _selectedDay);
 
             return CustomScrollView(
               slivers: [
@@ -90,19 +90,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     background: Container(
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
-                        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildMonthSelector(theme),
                           const SizedBox(height: 12),
-                          // Takvime çekilen tüm event listesini gönderiyoruz
                           HorizontalCalendar(
                             focusedDay: _focusedDay,
                             selectedDay: _selectedDay,
                             onDaySelected: _onDaySelected,
-                            events: events, 
+                            events: events,
                             theme: theme,
                           ),
                           const SizedBox(height: 12),
@@ -115,7 +116,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   delegate: SliverChildListDelegate(
                     [
                       _buildWeeklyMoodSection(theme, weeklyMoods),
-                      _buildStatisticsSection(theme, dominantMoodData), // YENİ: Veriyi gönderdik
+                      _buildStatisticsSection(theme, dominantMoodData, averageEnergy),
                       _buildDailyNoteButton(theme),
                       const SizedBox(height: 100),
                     ],
@@ -139,7 +140,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _buildNavButton(theme, Icons.chevron_left, () => _changeMonth(-1)),
           Text(
             DateFormat.yMMMM('tr_TR').format(_focusedDay),
-            style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           _buildNavButton(theme, Icons.chevron_right, () => _changeMonth(1)),
         ],
@@ -180,19 +185,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return moodByWeekday.map((key, value) => MapEntry(key, value.reduce((a, b) => a + b) / value.length));
   }
 
-  // --- YENİ: SON 7 GÜNÜN EN BASKIN DUYGUSUNU BULAN FONKSİYON ---
   Map<String, dynamic> _calculateDominantMood(List<CalendarEventModel> events, DateTime selectedDay) {
     final sevenDaysAgo = selectedDay.subtract(const Duration(days: 7));
-    
+
     final recentEvents = events.where((e) {
       final eventDate = DateUtils.dateOnly(e.date);
-      return eventDate.isAfter(sevenDaysAgo) && 
-             (eventDate.isBefore(selectedDay) || eventDate.isAtSameMomentAs(selectedDay)) && 
-             e.moodText != null;
+      return eventDate.isAfter(sevenDaysAgo) &&
+          (eventDate.isBefore(selectedDay) || eventDate.isAtSameMomentAs(selectedDay)) &&
+          e.moodText != null;
     }).toList();
 
     if (recentEvents.isEmpty) {
-      return {'text': 'Belirsiz', 'count': 0, 'emoji': '😶'};
+      return {'moodText': 'Belirsiz', 'count': 0, 'emoji': '😶'};
     }
 
     final Map<String, int> moodCounts = {};
@@ -215,25 +219,138 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
 
     return {
-      'text': dominantMood,
+      'moodText': dominantMood,
       'count': maxCount,
       'emoji': moodEmojis[dominantMood] ?? '✨',
     };
   }
 
-  LineChartData _moodChartData(ThemeData theme, Map<int, double> weeklyMoods) {
-    List<FlSpot> spots = weeklyMoods.entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value);
+  String _calculateAverageEnergy(List<CalendarEventModel> events, DateTime selectedDay) {
+    final sevenDaysAgo = selectedDay.subtract(const Duration(days: 7));
+
+    final recentEvents = events.where((e) {
+      final eventDate = DateUtils.dateOnly(e.date);
+      return eventDate.isAfter(sevenDaysAgo) &&
+          (eventDate.isBefore(selectedDay) || eventDate.isAtSameMomentAs(selectedDay)) &&
+          e.energy != null;
     }).toList();
 
-    spots.sort((a, b) => a.x.compareTo(b.x));
+    if (recentEvents.isEmpty) return "-";
 
-    final isSelectedDayInChart = spots.any((s) => s.x.toInt() == _selectedDay.weekday);
+    double totalEnergy = 0;
+    for (var event in recentEvents) {
+      totalEnergy += event.energy!;
+    }
+
+    final average = totalEnergy / recentEvents.length;
+    return average.toStringAsFixed(1);
+  }
+
+  String _weekdayLabelTr(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'Pzt';
+      case 2:
+        return 'Sal';
+      case 3:
+        return 'Çar';
+      case 4:
+        return 'Per';
+      case 5:
+        return 'Cum';
+      case 6:
+        return 'Cmt';
+      case 7:
+        return 'Paz';
+      default:
+        return '';
+    }
+  }
+
+  LineChartData _moodChartData(ThemeData theme, Map<int, double> weeklyMoods) {
+    final entries = weeklyMoods.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    final spots = entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList();
+
+  
+    double minY = 1;
+    double maxY = 10;
+    if (spots.isNotEmpty) {
+      final ys = spots.map((s) => s.y).toList()..sort();
+      final rawMin = ys.first;
+      final rawMax = ys.last;
+      final pad = ((rawMax - rawMin) * 0.25).clamp(0.8, 2.0);
+      minY = (rawMin - pad).clamp(1.0, 10.0);
+      maxY = (rawMax + pad).clamp(1.0, 10.0);
+      if ((maxY - minY) < 2) {
+        minY = (minY - 1).clamp(1.0, 10.0);
+        maxY = (maxY + 1).clamp(1.0, 10.0);
+      }
+    }
+
+    final lineGradient = LinearGradient(
+      colors: [
+        theme.colorScheme.primary,
+        theme.colorScheme.primary.withOpacity(0.55),
+      ],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
 
     return LineChartData(
-      gridData: const FlGridData(
+      lineTouchData: LineTouchData(
+        enabled: true,
+        handleBuiltInTouches: true,
+        touchTooltipData: LineTouchTooltipData(
+          tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          tooltipMargin: 12,
+         getTooltipColor: (touchedSpot) => theme.colorScheme.surface.withOpacity(0.95),
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          getTooltipItems: (touchedSpots) {
+            // Tek seri olduğu için artık duplicate yazmaz
+            return touchedSpots.map((t) {
+              final day = _weekdayLabelTr(t.x.toInt());
+              return LineTooltipItem(
+                '$day\n${t.y.toStringAsFixed(1)}',
+                TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  height: 1.2,
+                ),
+              );
+            }).toList();
+          },
+        ),
+        getTouchedSpotIndicator: (barData, spotIndexes) {
+          return spotIndexes.map((index) {
+            return TouchedSpotIndicatorData(
+              FlLine(
+                color: theme.colorScheme.primary.withOpacity(0.20),
+                strokeWidth: 2,
+                dashArray: const [6, 6],
+              ),
+              FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                  radius: 6.5,
+                  color: theme.colorScheme.surface,
+                  strokeColor: theme.colorScheme.primary,
+                  strokeWidth: 2.5,
+                ),
+              ),
+            );
+          }).toList();
+        },
+      ),
+      gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
+        horizontalInterval: 2,
+        getDrawingHorizontalLine: (value) => FlLine(
+          color: theme.colorScheme.onSurface.withOpacity(0.08),
+          strokeWidth: 1,
+        ),
       ),
       titlesData: FlTitlesData(
         show: true,
@@ -244,26 +361,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
             showTitles: true,
             reservedSize: 30,
             interval: 1,
-            getTitlesWidget: (double value, TitleMeta meta) {
+            getTitlesWidget: (value, meta) {
               final isSelected = value.toInt() == _selectedDay.weekday;
-              final style = TextStyle(
-                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.6),
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
-              );
-              String text = '';
-              switch (value.toInt()) {
-                case 1: text = 'Pzt'; break;
-                case 2: text = 'Sal'; break;
-                case 3: text = 'Çar'; break;
-                case 4: text = 'Per'; break;
-                case 5: text = 'Cum'; break;
-                case 6: text = 'Cmt'; break;
-                case 7: text = 'Paz'; break;
-              }
               return Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text(text, style: style, textAlign: TextAlign.center),
+                child: Text(
+                  _weekdayLabelTr(value.toInt()),
+                  style: TextStyle(
+                    color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withOpacity(0.55),
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               );
             },
           ),
@@ -273,47 +383,51 @@ class _CalendarScreenState extends State<CalendarScreen> {
       borderData: FlBorderData(show: false),
       minX: 1,
       maxX: 7,
-      minY: 1,
-      maxY: 10,
+      minY: minY,
+      maxY: maxY,
       lineBarsData: [
         LineChartBarData(
           spots: spots,
           isCurved: true,
-          color: theme.colorScheme.primary,
-          barWidth: 3,
+          curveSmoothness: 0.35,
+          gradient: lineGradient,
+          barWidth: 3.2,
           isStrokeCapRound: true,
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
+              final isSelected = spot.x.toInt() == _selectedDay.weekday;
+
+              // seçili gün: büyük ve net nokta
+              if (isSelected) {
+                return FlDotCirclePainter(
+                  radius: 6,
+                  color: theme.colorScheme.surface,
+                  strokeColor: theme.colorScheme.primary,
+                  strokeWidth: 2.6,
+                );
+              }
+
+              // diğer günlerde nokta gösterme (daha temiz)
               return FlDotCirclePainter(
-                radius: 4,
-                color: theme.colorScheme.surface,
-                strokeColor: theme.colorScheme.primary,
-                strokeWidth: 2,
+                radius: 0,
+                color: Colors.transparent,
               );
             },
           ),
           belowBarData: BarAreaData(
             show: true,
+            // buğulu alanı yumuşattık (istersen show: false yap)
             gradient: LinearGradient(
-              colors: [theme.colorScheme.primary.withOpacity(0.3), theme.colorScheme.primary.withOpacity(0)],
+              colors: [
+                theme.colorScheme.primary.withOpacity(0.10),
+                theme.colorScheme.primary.withOpacity(0.00),
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
           ),
         ),
-        if (isSelectedDayInChart)
-          LineChartBarData(
-            spots: [spots.firstWhere((s) => s.x.toInt() == _selectedDay.weekday)],
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                radius: 8,
-                color: theme.colorScheme.primary.withOpacity(0.3),
-              ),
-            ),
-            color: Colors.transparent,
-          ),
       ],
     );
   }
@@ -336,26 +450,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Haftalık Ruh Hali', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Haftalık Ruh Hali',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Duygu durumun bu hafta dengeli.', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 15)),
+                
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.trending_up, color: theme.colorScheme.primary, size: 16),
-                    const SizedBox(width: 4),
-                    const Text('+12%', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              )
+           
             ],
           ),
           const SizedBox(height: 20),
@@ -369,8 +476,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('ORTALAMA MOOD', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
-                        Text(averageMood.toStringAsFixed(1), style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 32, fontWeight: FontWeight.bold)),
+                        Text(
+                          'ORTALAMA MOOD',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        Text(
+                          averageMood.toStringAsFixed(1),
+                          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 32, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                     Row(
@@ -389,9 +507,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? LineChart(_moodChartData(theme, weeklyMoods))
                       : Center(
                           child: Text(
-                          'Bu haftaya ait ruh hali verisi bulunamadı.',
-                          style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
-                        )),
+                            'Bu haftaya ait ruh hali verisi bulunamadı.',
+                            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -401,8 +520,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // YENİ: dominantMoodData parametresi eklendi
-  Widget _buildStatisticsSection(ThemeData theme, Map<String, dynamic> dominantMoodData) {
+  Widget _buildStatisticsSection(ThemeData theme, Map<String, dynamic> dominantMoodData, String averageEnergy) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
@@ -410,13 +528,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         children: [
           Text('İstatistiklerim', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          _buildDominantEmotionCard(theme, dominantMoodData), // Veriyi karta pasladık
+          _buildDominantEmotionCard(theme, dominantMoodData),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: _buildGoalsCard(theme)),
               const SizedBox(width: 12),
-              Expanded(child: _buildEnergyCard(theme)),
+              Expanded(child: _buildEnergyCard(theme, averageEnergy)),
             ],
           ),
         ],
@@ -424,11 +542,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // YENİ: Kart artık dinamik verilerle doluyor
   Widget _buildDominantEmotionCard(ThemeData theme, Map<String, dynamic> data) {
-    final String moodName = data['text'];
-    final int count = data['count'];
-    final String emoji = data['emoji'];
+    // ÇÖZÜM: '??' operatörü ile null olma durumuna karşı varsayılan değerler atadık.
+    // data['moodText'] null gelirse sağındaki 'Belirsiz' yazısı kullanılır.
+    final String moodName = data['moodText'] ?? 'Belirsiz'; 
+    final int count = data['count'] ?? 0;
+    final String emoji = data['emoji'] ?? '🤷';
 
     return _GlassCard(
       padding: const EdgeInsets.all(16),
@@ -443,19 +562,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 4),
               Text(moodName, style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(count > 0 ? 'Son 7 günde $count kez' : 'Henüz kayıt yok', 
-                  style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 12)),
+              Text(
+                count > 0 ? 'Son 7 günde $count kez' : 'Henüz kayıt yok',
+                style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 12),
+              ),
             ],
           ),
           CircleAvatar(
             radius: 24,
             backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-            child: Text(emoji, style: const TextStyle(fontSize: 24)), // Ekrana emojiyi basıyoruz
+            child: Text(emoji, style: const TextStyle(fontSize: 24)),
           )
         ],
       ),
     );
-  }
+}
 
   Widget _buildGoalsCard(ThemeData theme) {
     return _GlassCard(
@@ -470,7 +591,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             TextSpan(
               text: '12',
               style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold),
-              children: [TextSpan(text: '/15', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.normal))],
+              children: [
+                TextSpan(
+                  text: '/15',
+                  style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.normal),
+                )
+              ],
             ),
           ),
           const SizedBox(height: 4),
@@ -480,7 +606,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildEnergyCard(ThemeData theme) {
+  Widget _buildEnergyCard(ThemeData theme, String averageEnergy) {
     return _GlassCard(
       padding: const EdgeInsets.all(16),
       borderRadius: const BorderRadius.all(Radius.circular(16)),
@@ -489,7 +615,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         children: [
           CircleAvatar(radius: 16, backgroundColor: theme.colorScheme.primary, child: const Icon(Icons.bolt, size: 20, color: Colors.white)),
           const SizedBox(height: 16),
-          Text('7.5', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(averageEnergy, style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('Ortalama Enerjin', style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.7), fontSize: 12)),
         ],

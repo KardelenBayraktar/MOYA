@@ -63,7 +63,7 @@ class HomeScreenNew extends StatelessWidget {
                           const SizedBox(height: 12),
                           const EmergencySupportCard(),
                           const SizedBox(height: 12),
-                          const HomeMoodSelector(),
+                           HomeMoodSelector(),
                           const SizedBox(height: 16),
                           const DailyIntentionCard(),
                           const SizedBox(height: 24),

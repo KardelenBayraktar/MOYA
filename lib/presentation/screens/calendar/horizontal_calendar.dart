@@ -44,10 +44,15 @@ class _HorizontalCalendarState extends State<HorizontalCalendar> {
   }
 
   void _scrollToSelectedDay() {
-    if (!mounted) return;
+    // Controller'ın bir view'a bağlı olduğundan emin ol (çökme önleyici)
+    if (!mounted || !_scrollController.hasClients) return;
+    
+    // context.size null dönme ihtimaline karşı ekran genişliğini yedek olarak al
+    final screenWidth = context.size?.width ?? MediaQuery.of(context).size.width;
+    
     final dayIndex = widget.selectedDay.day - 1;
-    // Her bir günün genişliği (56) + marjini (8) hesaba katarak ortalamaya çalışıyoruz.
-    final targetOffset = (dayIndex * 64.0) - (context.size!.width / 2) + 32; 
+    // Her bir günün genişliği (56) + marjini (8) = 64
+    final targetOffset = (dayIndex * 64.0) - (screenWidth / 2) + 32; 
     
     _scrollController.animateTo(
       targetOffset < 0 ? 0 : targetOffset, // Negatif değere gitmesini engelle
@@ -66,6 +71,13 @@ class _HorizontalCalendarState extends State<HorizontalCalendar> {
   Widget build(BuildContext context) {
     final daysInMonth = DateUtils.getDaysInMonth(widget.focusedDay.year, widget.focusedDay.month);
     
+    // Performans İyileştirmesi: Her öğe çiziminde tüm listeyi `any` ile dönmek yerine,
+    // sadece o ay içinde verisi olan günlerin numaralarını bir Set içinde topluyoruz.
+    final Set<int> eventDays = widget.events
+        .where((e) => e.date.year == widget.focusedDay.year && e.date.month == widget.focusedDay.month)
+        .map((e) => e.date.day)
+        .toSet();
+    
     return SizedBox(
       height: 80,
       child: ListView.builder(
@@ -77,7 +89,9 @@ class _HorizontalCalendarState extends State<HorizontalCalendar> {
           final day = index + 1;
           final date = DateTime(widget.focusedDay.year, widget.focusedDay.month, day);
           final isSelected = DateUtils.isSameDay(widget.selectedDay, date);
-          final hasEvent = widget.events.any((event) => DateUtils.isSameDay(event.date, date));
+          
+          // O gün için bir kayıt var mı, Set üzerinden anında kontrol et
+          final hasEvent = eventDays.contains(day);
 
           return GestureDetector(
             onTap: () => widget.onDaySelected(date),
@@ -85,8 +99,14 @@ class _HorizontalCalendarState extends State<HorizontalCalendar> {
               width: 56,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: isSelected ? widget.theme.colorScheme.primary : widget.theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: isSelected 
+                    ? widget.theme.colorScheme.primary 
+                    : widget.theme.colorScheme.onSurface.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(14),
+                border: isSelected 
+                    ? null 
+                    // DÜZELTME: BorderSide yerine Border.all kullanıyoruz
+                    : Border.all(color: widget.theme.colorScheme.onSurface.withOpacity(0.08)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -95,7 +115,7 @@ class _HorizontalCalendarState extends State<HorizontalCalendar> {
                     DateFormat.E('tr_TR').format(date).substring(0,1).toUpperCase(), // "P", "S", "Ç"
                     style: TextStyle(
                       fontSize: 12,
-                      color: isSelected ? widget.theme.colorScheme.onPrimary.withOpacity(0.8) : widget.theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: isSelected ? widget.theme.colorScheme.onPrimary.withOpacity(0.9) : widget.theme.colorScheme.onSurface.withOpacity(0.5),
                     ),
                   ),
                   const SizedBox(height: 8),
