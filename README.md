@@ -45,4 +45,4 @@ The application was designed with a simple, modern, and calming visual approach.
 - Enhancing overall performance and usability
 
 ## Author
-Kardelen Bayraktar and team
+Team
